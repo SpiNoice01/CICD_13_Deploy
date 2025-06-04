@@ -1,57 +1,36 @@
-name: SonarQube Analysis
+name: SonarQube
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
-
 jobs:
-  sonarcloud-analysis:
-    name: SonarCloud Analysis
+  build:
+    name: Build and analyze
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: 17
-          distribution: "zulu"
-
+          distribution: "zulu" # Alternative distribution options are available.
       - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar-${{ hashFiles('pom.xml') }}
-          restore-keys: ${{ runner.os }}-sonar-
-
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
-
-      - name: Build and analyze with SonarCloud
+          restore-keys: ${{ runner.os }}-m2
+      - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: spinoice01 # Must match your Organization Key exactly
-        run: |
-          # Clean any existing SonarQube configuration
-          mvn -B sonar:remove -Dsonar.host.url=http://localhost:9000 || true
-
-          # Build and analyze
-          mvn -B clean verify
-          mvn -B sonar:sonar \
-            -Dsonar.projectKey=SpiNoice01_CICD_13_Deploy \  # Keep original project key case
-            -Dsonar.organization=$SONAR_ORGANIZATION \  # Uses lowercase org key
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.projectName=CICD_13_Deploy \
-            -Dsonar.scm.provider=git \
-            -Dsonar.sourceEncoding=UTF-8 \
-            -Dsonar.links.scm=https://github.com/${{ github.repository }} \
-            -Dsonar.links.ci=https://github.com/${{ github.repository }}/actions
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=SpiNoice01_CICD_13_Deploy
